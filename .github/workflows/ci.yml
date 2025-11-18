@@ -74,6 +74,12 @@ jobs:
             echo "Build '${JFROG_CLI_BUILD_NAME}' is already indexed in Xray for project '${JFROG_CLI_BUILD_PROJECT}'."
           else
             echo "Build '${JFROG_CLI_BUILD_NAME}' is NOT indexed. Adding it now..."
+            jf xr curl \
+              -X POST \
+              "api/v1/binMgr/builds?projectKey=${JFROG_CLI_BUILD_PROJECT}" \
+              -H "Content-Type: application/json" \
+              -d @build-index.json \
+              -sS
           fi
 
       # ---- Configure Artifactory repos for build modules ----

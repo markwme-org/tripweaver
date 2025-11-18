@@ -1,0 +1,20 @@
+      # ---- SBOM (CycloneDX only; attach to build) ----
+      - name: Install Syft
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Generate+upload SBOMs
+        run: |
+          mkdir -p _sbom
+          syft $IMG_API@${API_DIGEST}   -o cyclonedx-json > _sbom/api.cdx.json
+          syft $IMG_FE@${FE_DIGEST}     -o cyclonedx-json > _sbom/frontend.cdx.json
+          syft $IMG_SEED@${SEED_DIGEST} -o cyclonedx-json > _sbom/seed.cdx.json
+          jf rt u "_sbom/*.json" "mw-sbom/sbom/tripweaver-ci/${{ github.run_id }}/"
+
+      # ---- Sign images (Cosign keyless). Optional: set COSIGN_EXPERIMENTAL=1 if needed ----
+      - uses: sigstore/cosign-installer@v3.7.0
+      - name: Sign images
+        env: { COSIGN_YES: "true" }
+        run: |
+          cosign sign $IMG_API@${API_DIGEST}
+          cosign sign $IMG_FE@${FE_DIGEST}
+          cosign sign $IMG_SEED@${SEED_DIGEST}
+

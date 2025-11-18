@@ -12,14 +12,6 @@ on:
   workflow_dispatch:
     # Allow manual triggering
 
-env:
-  REGISTRY: ${{ vars.JFROG_REGISTRY }}         # e.g. <org>.jfrog.io
-  IMG_API: ${{ vars.JFROG_REGISTRY }}/tripweaver-api
-  IMG_FE:  ${{ vars.JFROG_REGISTRY }}/tripweaver-frontend
-  IMG_SEED: ${{ vars.JFROG_REGISTRY }}/tripweaver-seedgen
-  # Enable command summaries for GitHub Actions integration
-  # JFROG_CLI_COMMAND_SUMMARY_OUTPUT_DIR: ${{ runner.temp }}/jfrog-command-summaries
-
 permissions:
   id-token: write
   contents: read
@@ -43,6 +35,7 @@ jobs:
           oidc-audience: ${{ vars.JF_URL }}
         env:
           JF_URL: ${{ vars.JF_URL }}
+          JF_PROJECT: ${{ vars.JF_PROJECT_KEY }}
           JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - run: |
@@ -55,7 +48,7 @@ jobs:
       - name: Configure pip for Artifactory
         working-directory: api
         env:
-          JF_PYPI_REPO: ${{ vars.JF_PYPI_REPO }}   # virtual (e.g. pypi)
+          JF_PYPI: ${{ vars.JF_PYPI }}   # virtual (e.g. pypi)
         run: |
           jf pip-config --repo-resolve "$JF_PYPI_REPO" || true
           echo "Pip configured to use Artifactory repository: $JF_PYPI_REPO"
@@ -68,9 +61,9 @@ jobs:
       - name: NPM install and resolve via Artifactory
         working-directory: frontend
         env:
-          ARTIFACTORY_NPM_REGISTRY: ${{ vars.ARTIFACTORY_NPM_REGISTRY }} # https://<org>.jfrog.io/artifactory/api/npm/npm/
+          JF_NPM: ${{ vars.JF_NPM }} # https://<org>.jfrog.io/artifactory/api/npm/npm/
         run: |
-          jf npm-config --global=true --repo-resolve "$ARTIFACTORY_NPM_REGISTRY" || true
+          jf npm-config --global=true --repo-resolve "$JF_NPM" || true
           jf npm install --module fe-npm  # Generates package-lock.json fresh
           rm -rf node_modules  # keep image slim; we only needed dependency resolution
 
@@ -78,10 +71,35 @@ jobs:
       - name: NuGet resolve via Artifactory
         working-directory: tools/seedgen
         env: 
-          ARTIFACTORY_NUGET_SOURCE: ${{ vars.ARTIFACTORY_NUGET_SOURCE }} # https://<org>.jfrog.io/artifactory/api/nuget/nuget
+          JF_NUGET: ${{ vars.JF_NUGET }} # https://<org>.jfrog.io/artifactory/api/nuget/nuget
         run: |
-          jf dotnet-config --repo-resolve "$ARTIFACTORY_NUGET_SOURCE" || true
+          jf dotnet-config --repo-resolve "$JF_NUGET" || true
           jf dotnet restore --module seed-nuget
+
+          - name: Build Docker image tags
+            id: docker-tags
+            run: |
+              JF_URL="${{ secrets.JF_URL }}"
+              JF_DOCKER="${{ secrets.JF_DOCKER }}"
+              
+              # Strip https:// if present
+              JF_URL="${JF_URL#https://}"
+              JF_URL="${JF_URL#http://}"
+              
+              # Strip trailing slash if present
+              JF_URL="${JF_URL%/}"
+
+              # Construct the base
+              DOCKER_TAG_BASE="${JF_URL}/${JF_DOCKER}"              
+
+              # Construct and output tags
+              echo "api=${DOCKER_TAG_BASE}/tripweaver-api:${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+              echo "frontend=${DOCKER_TAG_BASE}/tripweaver-frontend:${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+              echo "seedgen=${DOCKER_TAG_BASE}/tripweaver-seedgen:${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+              
+              echo "API tag: ${DOCKER_TAG_BASE}/tripweaver-api:${GITHUB_SHA::7}"
+              echo "Frontend tag: ${DOCKER_TAG_BASE}/tripweaver-frontend:${GITHUB_SHA::7}"
+              echo "Seedgen tag: ${DOCKER_TAG_BASE}/tripweaver-seedgen:${GITHUB_SHA::7}"
 
       # ---- Build & push images (attach to SAME build) ----
       - uses: docker/setup-buildx-action@v3
@@ -89,39 +107,19 @@ jobs:
         run: echo "${{ steps.jf-setup.outputs.oidc-token }}" >/dev/null || true  # no-op; jf handles auth
       - name: Build+push API
         run: |
-          jf docker build -t $IMG_API:${{ github.sha }} -f api/Dockerfile api
-          jf docker push  $IMG_API:${{ github.sha }}
-          echo "API_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $IMG_API:${{ github.sha }} | cut -d'@' -f2)" >> $GITHUB_ENV
+          jf docker build -t ${{ steps.docker-tags.outputs.api }} -f api/Dockerfile api
+          jf docker push  ${{ steps.docker-tags.outputs.api }}
+          echo "API_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ steps.docker-tags.outputs.api }} | cut -d'@' -f2)" >> $GITHUB_ENV
       - name: Build+push Frontend
         run: |
-          jf docker build -t $IMG_FE:${{ github.sha }} -f frontend/Dockerfile frontend
-          jf docker push  $IMG_FE:${{ github.sha }}
-          echo "FE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $IMG_FE:${{ github.sha }} | cut -d'@' -f2)" >> $GITHUB_ENV
+          jf docker build -t ${{ steps.docker-tags.outputs.frontend }} -f frontend/Dockerfile frontend
+          jf docker push  ${{ steps.docker-tags.outputs.frontend }}
+          echo "FE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ steps.docker-tags.outputs.frontend }} | cut -d'@' -f2)" >> $GITHUB_ENV
       - name: Build+push Seedgen
         run: |
-          jf docker build -t $IMG_SEED:${{ github.sha }} -f tools/seedgen/Dockerfile tools/seedgen
-          jf docker push  $IMG_SEED:${{ github.sha }}
-          echo "SEED_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $IMG_SEED:${{ github.sha }} | cut -d'@' -f2)" >> $GITHUB_ENV
-
-      # ---- SBOM (CycloneDX only; attach to build) ----
-      - name: Install Syft
-        run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-      - name: Generate+upload SBOMs
-        run: |
-          mkdir -p _sbom
-          syft $IMG_API@${API_DIGEST}   -o cyclonedx-json > _sbom/api.cdx.json
-          syft $IMG_FE@${FE_DIGEST}     -o cyclonedx-json > _sbom/frontend.cdx.json
-          syft $IMG_SEED@${SEED_DIGEST} -o cyclonedx-json > _sbom/seed.cdx.json
-          jf rt u "_sbom/*.json" "mw-sbom/sbom/tripweaver-ci/${{ github.run_id }}/"
-
-      # ---- Sign images (Cosign keyless). Optional: set COSIGN_EXPERIMENTAL=1 if needed ----
-      - uses: sigstore/cosign-installer@v3.7.0
-      - name: Sign images
-        env: { COSIGN_YES: "true" }
-        run: |
-          cosign sign $IMG_API@${API_DIGEST}
-          cosign sign $IMG_FE@${FE_DIGEST}
-          cosign sign $IMG_SEED@${SEED_DIGEST}
+          jf docker build -t ${{ steps.docker-tags.outputs.seedgen }} -f tools/seedgen/Dockerfile tools/seedgen
+          jf docker push  ${{ steps.docker-tags.outputs.seedgen }}
+          echo "SEED_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ steps.docker-tags.outputs.seedgen }} | cut -d'@' -f2)" >> $GITHUB_ENV
 
       # ---- Xray scanning Docker images first (faster) ----
       - name: Xray scan Docker images
@@ -129,13 +127,13 @@ jobs:
           echo "Scanning Docker images for vulnerabilities..."
 
           echo "Scanning API image..."
-          jf docker scan $IMG_API:${{ github.sha }} --fail=false --format=table
+          jf docker scan ${{ steps.docker-tags.outputs.api }} --fail=false --format=table
 
           echo "Scanning Frontend image..."
-          jf docker scan $IMG_FE:${{ github.sha }} --fail=false --format=table
+          jf docker scan ${{ steps.docker-tags.outputs.frontend }} --fail=false --format=table
 
           echo "Scanning Seedgen image..."
-          jf docker scan $IMG_SEED:${{ github.sha }} --fail=false --format=table
+          jf docker scan ${{ steps.docker-tags.outputs.seedgen }} --fail=false --format=table
 
       # ---- Publish build-info before build-info scanning (slower, done last) ----
       - name: Publish build-info for scanning

@@ -80,8 +80,8 @@ jobs:
       - name: Build Docker image tags
         id: docker-tags
         run: |
-          JF_URL="${{ secrets.JF_URL }}"
-          JF_DOCKER="${{ secrets.JF_DOCKER }}"
+          JF_URL="${{ vars.JF_URL }}"
+          JF_DOCKER="${{ vars.JF_DOCKER }}"
           
           # Strip https:// if present
           JF_URL="${JF_URL#https://}"

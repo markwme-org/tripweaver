@@ -76,30 +76,31 @@ jobs:
           jf dotnet-config --repo-resolve "$JF_NUGET" || true
           jf dotnet restore --module seed-nuget
 
-          - name: Build Docker image tags
-            id: docker-tags
-            run: |
-              JF_URL="${{ secrets.JF_URL }}"
-              JF_DOCKER="${{ secrets.JF_DOCKER }}"
-              
-              # Strip https:// if present
-              JF_URL="${JF_URL#https://}"
-              JF_URL="${JF_URL#http://}"
-              
-              # Strip trailing slash if present
-              JF_URL="${JF_URL%/}"
+      # Setup Docker build tags
+      - name: Build Docker image tags
+        id: docker-tags
+        run: |
+          JF_URL="${{ secrets.JF_URL }}"
+          JF_DOCKER="${{ secrets.JF_DOCKER }}"
+          
+          # Strip https:// if present
+          JF_URL="${JF_URL#https://}"
+          JF_URL="${JF_URL#http://}"
+          
+          # Strip trailing slash if present
+          JF_URL="${JF_URL%/}"
 
-              # Construct the base
-              DOCKER_TAG_BASE="${JF_URL}/${JF_DOCKER}"              
+          # Construct the base
+          DOCKER_TAG_BASE="${JF_URL}/${JF_DOCKER}"              
 
-              # Construct and output tags
-              echo "api=${DOCKER_TAG_BASE}/tripweaver-api:${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-              echo "frontend=${DOCKER_TAG_BASE}/tripweaver-frontend:${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-              echo "seedgen=${DOCKER_TAG_BASE}/tripweaver-seedgen:${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-              
-              echo "API tag: ${DOCKER_TAG_BASE}/tripweaver-api:${GITHUB_SHA::7}"
-              echo "Frontend tag: ${DOCKER_TAG_BASE}/tripweaver-frontend:${GITHUB_SHA::7}"
-              echo "Seedgen tag: ${DOCKER_TAG_BASE}/tripweaver-seedgen:${GITHUB_SHA::7}"
+          # Construct and output tags
+          echo "api=${DOCKER_TAG_BASE}/tripweaver-api:${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          echo "frontend=${DOCKER_TAG_BASE}/tripweaver-frontend:${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          echo "seedgen=${DOCKER_TAG_BASE}/tripweaver-seedgen:${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          
+          echo "API tag: ${DOCKER_TAG_BASE}/tripweaver-api:${GITHUB_SHA::7}"
+          echo "Frontend tag: ${DOCKER_TAG_BASE}/tripweaver-frontend:${GITHUB_SHA::7}"
+          echo "Seedgen tag: ${DOCKER_TAG_BASE}/tripweaver-seedgen:${GITHUB_SHA::7}"
 
       # ---- Build & push images (attach to SAME build) ----
       - uses: docker/setup-buildx-action@v3

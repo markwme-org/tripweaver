@@ -143,6 +143,41 @@ jobs:
           jf rt build-add-git
           jf rt build-publish
 
+      - name: Ensure build is indexed in Xray
+        env:
+          RAW_JF_URL: ${{ vars.JF_URL }}
+          BUILD_NAME: $JFROG_CLI_BUILD_NAME
+          XRAY_PROJECT_KEY: $JFROG_CLI_BUILD_PROJECT
+        run: |
+          # Install jq if not already present (safe on ubuntu-latest)
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
+
+          # Derive XRAY_SERVER_ID from JF_URL
+          # Strip protocol
+          NO_PROTO="${RAW_JF_URL#https://}"
+          # Take everything before the first dot
+          XRAY_SERVER_ID="${NO_PROTO%%.*}"
+
+          echo "Derived XRAY_SERVER_ID: ${XRAY_SERVER_ID}"
+          echo "Build name: ${BUILD_NAME}"
+          echo "Project key: ${XRAY_PROJECT_KEY}"
+          echo "Checking Xray indexing for build '${BUILD_NAME}' in project '${XRAY_PROJECT_KEY}' (server='${XRAY_SERVER_ID}')"
+
+          # Fetch current indexing configuration for this server + project
+          INDEXING_JSON=$(jf xr curl "api/v1/binMgr/${XRAY_SERVER_ID}/builds?projectKey=${XRAY_PROJECT_KEY}")
+
+          # Check if BUILD_NAME is present in indexed_builds
+          if echo "$INDEXING_JSON" \
+              | jq -e --arg name "$BUILD_NAME" '(.indexed_builds // []) | index($name)' >/dev/null; then
+            echo "Build '${BUILD_NAME}' is already indexed in Xray for project '${XRAY_PROJECT_KEY}'."
+          else
+            echo "Build '${BUILD_NAME}' is NOT indexed. Adding it now..."
+          fi
+
+
       # ---- Xray scanning build-info (build indexing enabled via enable-build-indexing.sh) ----
       - name: Xray scan build-info
         run: |

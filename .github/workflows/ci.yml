@@ -82,7 +82,6 @@ jobs:
               -d @build-index.json \
               -sS
           fi
-          cat build-index.json
 
       # ---- Configure Artifactory repos for build modules ----
       # Python (pip → module api-pip) - packages installed in Docker build

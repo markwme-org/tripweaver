@@ -11,6 +11,7 @@ from .planner import Planner
 # Configure logging for security monitoring
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+password = "password123"
 
 app = FastAPI(title="TripWeaver API")
 

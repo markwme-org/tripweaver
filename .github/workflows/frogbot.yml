@@ -38,5 +38,5 @@ jobs:
           JF_GIT_BASE_BRANCH: ${{ matrix.branch }}    # For repository scan action
 
         with:
-          oidc-provider-name: ${{vars.JF_OIDC_PROVIDER_NAME}}
+          oidc-provider-name: ${{vars.JF_OIDC_PROVIDER}}
           oidc-audience: ${{vars.JF_OIDC_AUDIENCE}}

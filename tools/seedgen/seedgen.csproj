@@ -8,7 +8,7 @@
   <ItemGroup>
     <PackageReference Include="CsvHelper" Version="30.0.1" />
     <!-- Intentionally vulnerable packages for JFrog security scanning demo -->
-    <PackageReference Include="System.Text.Json" Version="6.0.0" />
+    <PackageReference Include="System.Text.Json" Version="6.0.10" />
     <!-- CVE-2021-26701 (High): .NET Core Remote Code Execution -->
     <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
     <!-- CVE-2024-21907 (High): Insecure deserialization -->

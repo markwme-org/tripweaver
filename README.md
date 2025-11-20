@@ -37,3 +37,5 @@ This repository is a minimal, production-shaped polyglot demo application design
 See `DEMO.md` for a step-by-step demo script.
 
 ---
+
+Small update to trigger a PR :-)

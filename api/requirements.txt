@@ -7,3 +7,5 @@ pytest==7.4.2
 # Intentionally vulnerable packages for JFrog security scanning demo
 requests==2.25.1        # CVE-2023-32681 (High): Certificate validation bypass
 urllib3==1.26.0         # CVE-2021-33503 (High): Improper input validation
+Django==2.2.0           # CVE-2019-14234 (High): SQL injection vulnerability
+Pillow==8.1.0           # CVE-2021-25287, CVE-2021-25288 (High): Buffer overflow vulnerabilities

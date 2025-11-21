@@ -10,8 +10,6 @@
     <!-- Intentionally vulnerable packages for JFrog security scanning demo -->
     <PackageReference Include="System.Text.Json" Version="6.0.0" />
     <!-- CVE-2021-26701 (High): .NET Core Remote Code Execution -->
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
-    <!-- CVE-2024-21907 (High): Insecure deserialization -->
     <PackageReference Include="System.Net.Http" Version="4.3.0" />
     <!-- CVE-2018-8292 (High): Information disclosure vulnerability -->
   </ItemGroup>

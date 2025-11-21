@@ -7,5 +7,3 @@ pytest==7.4.2
 # Intentionally vulnerable packages for JFrog security scanning demo
 requests==2.25.1        # CVE-2023-32681 (High): Certificate validation bypass
 urllib3==1.26.0         # CVE-2021-33503 (High): Improper input validation
-Jinja2==2.11.3          # CVE-2024-22195 (Medium): XSS vulnerability
-PyYAML==5.3.1           # CVE-2020-14343 (Critical): Arbitrary code execution

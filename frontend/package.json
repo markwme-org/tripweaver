@@ -13,10 +13,12 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "lodash": "4.17.15",
+    "axios": "0.21.0",
+    "minimist": "0.0.8",
     "node-fetch": "2.6.0"
   },
   "comments": {
-    "vulnerabilities": "Intentional vulnerabilities for JFrog demo: lodash 4.17.15 (CVE-2019-10744 - Prototype Pollution), node-fetch 2.6.0 (CVE-2020-15168 - Data exposure)"
+    "vulnerabilities": "Intentional vulnerabilities for JFrog demo: lodash 4.17.15 (CVE-2019-10744 - Prototype Pollution), axios 0.21.0 (CVE-2020-28168 - SSRF), minimist 0.0.8 (CVE-2020-7598 - Prototype Pollution), node-fetch 2.6.0 (CVE-2020-15168 - Data exposure)"
   },
   "devDependencies": {
     "@testing-library/react": "14.0.0",
